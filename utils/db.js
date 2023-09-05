@@ -27,6 +27,8 @@ class DBClient {
       });
     // creating a new database
     this.db = this.mongoDb.db(this.database);
+
+    this.users = this.db.collection('users');
   }
 
   isAlive() {
@@ -34,7 +36,7 @@ class DBClient {
   }
 
   async nbUsers() {
-    const users = await this.db.collection('users').estimatedDocumentCount();
+    const users = await this.users.estimatedDocumentCount();
     return users;
   }
 
@@ -42,6 +44,13 @@ class DBClient {
     // this.db.collection('files').countDocuments()
     const files = await this.db.collection('files').estimatedDocumentCount();
     return files;
+  }
+
+  async getUserCountByEmail(email) {
+    const query = { email };
+    //   users.countDocuments(query) is a Promise
+    const count = await this.users.countDocuments(query);
+    return count;
   }
 }
 
