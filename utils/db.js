@@ -1,6 +1,8 @@
 // This file holds the monogodb configuration settings
 import { MongoClient } from 'mongodb';
 
+const mongo = require('mongodb');
+
 class DBClient {
   constructor() {
     // from the environment variable DB_HOST or default: localhost
@@ -51,6 +53,13 @@ class DBClient {
     //   users.countDocuments(query) is a Promise
     const count = await this.users.countDocuments(query);
     return count;
+  }
+
+  async getUserById(id) {
+    const searchId = new mongo.ObjectId(id);
+    const user = await this.users.findOne({ _id: searchId });
+
+    return user;
   }
 }
 
