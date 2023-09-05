@@ -31,7 +31,7 @@ export default class UserController {
     const doc = { email, password: hashedPassword };
     const result = await dbClient.users.insertOne(doc);
 
-    res.status(200).send({ id: result.insertedId, email });
+    res.status(201).send({ id: result.insertedId, email });
     // dbClient.close();
   }
 }
