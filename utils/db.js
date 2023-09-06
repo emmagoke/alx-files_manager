@@ -31,6 +31,7 @@ class DBClient {
     this.db = this.mongoDb.db(this.database);
 
     this.users = this.db.collection('users');
+    this.files = this.db.collection('files');
   }
 
   isAlive() {
@@ -44,8 +45,15 @@ class DBClient {
 
   async nbFiles() {
     // this.db.collection('files').countDocuments()
-    const files = await this.db.collection('files').estimatedDocumentCount();
+    const files = await this.files.estimatedDocumentCount();
     return files;
+  }
+
+  async getFileById(id) {
+    const searchId = new mongo.ObjectId(id);
+    const file = await this.files.findOne({ _id: searchId });
+
+    return file;
   }
 
   async getUserCountByEmail(email) {
