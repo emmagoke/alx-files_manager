@@ -6,7 +6,33 @@ import redisClient from '../utils/redis';
 
 const ALLOWED = { folder: 'folder', file: 'file', image: 'image' };
 const ROOT = 0;
-// const PAGE_SIZE = 20;
+const PAGE_SIZE = 5;
+
+// Argument passed in must be a single String of 12 bytes or a string
+// of 24 hex characters
+// const NULL_ID = Buffer.alloc(24, '0').toString('utf-8');
+// const isValidId = (id) => {
+//   const size = 24;
+//   let i = 0;
+//   const charRanges = [
+//     [48, 57], // 0 - 9
+//     [97, 102], // a - f
+//     [65, 70], // A - F
+//   ];
+//   if (typeof id !== 'string' || id.length !== size) {
+//     return false;
+//   }
+//   while (i < size) {
+//     const c = id[i];
+//     const code = c.charCodeAt(0);
+
+//     if (!charRanges.some((range) => code >= range[0] && code <= range[1])) {
+//       return false;
+//     }
+//     i += 1;
+//   }
+//   return true;
+// };
 
 export default class FilesController {
   static async getUser(req) {
@@ -133,7 +159,7 @@ export default class FilesController {
 
     const file = await dbClient.files.findOne({
       _id: new ObjectId(fileId.toString()),
-      userId: ObjectId(user._id.toString()),
+      userId: user._id,
     });
 
     if (!file) {
@@ -152,55 +178,69 @@ export default class FilesController {
     res.status(200).json(response);
   }
 
-  // static async getIndex(req, res) {
-  //   const user = await FilesController.getUser(req);
-  //   if (!user) {
-  //     res.status(401).json({ error: 'Unauthorized' });
-  //     return;
-  //   }
+  static async getIndex(req, res) {
+    const user = await FilesController.getUser(req);
+    if (!user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
 
-  //   // this are search query
-  //   const parentId = req.query.parentId || ROOT.toString();
-  //   const page = req.query.page || '' ? Number.parseInt(req.query.page.toString()) : 0;
+    // this are search query
+    const { parentId } = req.query;
+    const page = req.query.page || '' ? Number.parseInt(req.query.page.toString(), 10) : 0;
 
-  //   console.log(user);
-  //   console.log(page);
-  //   console.log(parentId);
+    console.log(user);
+    console.log(page);
+    console.log(parentId);
 
-  //   const search = {
-  //     userId: user._id.toString(),
-  //     parentId:
-  //       parentId === ROOT.toString() ? parentId : new ObjectId(parentId),
-  //   };
+    let search = {
+      userId: user._id.toString(),
+      parentId:
+        parentId === ROOT.toString() ? parentId : new ObjectId(parentId),
+    };
 
-  //   const pipeline = [
-  //     { $match: search },
-  //     { $skip: page * PAGE_SIZE },
-  //     { $limit: PAGE_SIZE },
-  //     // {
-  //     //   $project: {
-  //     //     _id: 0,
-  //     //     id: '$_id',
-  //     //     userId: '$userId',
-  //     //     name: '$name',
-  //     //     type: '$type',
-  //     //     isPublic: '$isPublic',
-  //     //     parentId: {
-  //     //       $cond: {
-  //     //         if: { $eq: ['$parentId', '0'] },
-  //     //         then: 0,
-  //     //         else: '$parentId',
-  //     //       },
-  //     //     },
-  //     //   },
-  //     // },
-  //   ];
+    if (!parentId) {
+      search = {
+        userId: user._id,
+      };
+    } else {
+      search = {
+        userId: user._id,
+        parentId: new ObjectId(String(parentId)),
+      };
+    }
 
-  //   const file = dbClient.db.collection('files').aggregate(pipeline).toArray();
-  //   console.log(file);
-  //   for await (const doc of file) {
-  //     console.log(doc);
-  //   }
-  //   // res.status(200).json(file);
-  // }
+    const pipeline = [
+      { $match: search },
+      { $skip: page * PAGE_SIZE },
+      { $limit: PAGE_SIZE },
+      // {
+      //   $project: {
+      //     _id: 0,
+      //     id: '$_id',
+      //     userId: '$userId',
+      //     name: '$name',
+      //     type: '$type',
+      //     isPublic: '$isPublic',
+      //     parentId: {
+      //       $cond: {
+      //         if: { $eq: ['$parentId', '0'] },
+      //         then: 0,
+      //         else: '$parentId',
+      //       },
+      //     },
+      //   },
+      // },
+    ];
+
+    const file = await dbClient.db
+      .collection('files')
+      .aggregate(pipeline)
+      .toArray();
+    console.log(file);
+    // for await (const doc of file) {
+    //   console.log(doc);
+    // }
+    res.status(200).json(file);
+  }
 }
