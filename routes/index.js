@@ -11,8 +11,14 @@ router.route('/stats').get(AppController.getStats);
 router.route('/users').post(UserController.postNew);
 router.route('/connect').get(AuthController.getConnect);
 router.route('/disconnect').get(AuthController.getDisconnect);
+router.route('/files').post(FilesController.postUpload);
 router.get('/users/me', UserController.getMe);
-router.post('/files', FilesController.postUpload);
+// router
+//   .route('/files')
+//   .get(FilesController.getIndex)
+//   .post(FilesController.postUpload);
+router.route('/files').get(FilesController.getIndex);
+router.route('/files/:id').get(FilesController.getShow);
 // router.post('/users', UserController.postNew);
 
 export default router;
