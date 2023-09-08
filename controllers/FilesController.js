@@ -187,8 +187,7 @@ export default class FilesController {
 
     // this are search query
     const { parentId } = req.query;
-    const page =
-      req.query.page || '' ? Number.parseInt(req.query.page.toString(), 10) : 0;
+    const page = req.query.page || '' ? Number.parseInt(req.query.page.toString(), 10) : 0;
 
     console.log(user);
     console.log(page);
