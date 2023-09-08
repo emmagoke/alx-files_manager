@@ -193,11 +193,7 @@ export default class FilesController {
     console.log(page);
     console.log(parentId);
 
-    let search = {
-      userId: user._id.toString(),
-      parentId:
-        parentId === ROOT.toString() ? parentId : new ObjectId(parentId),
-    };
+    let search;
 
     if (!parentId) {
       search = {
