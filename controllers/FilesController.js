@@ -6,7 +6,7 @@ import redisClient from '../utils/redis';
 
 const ALLOWED = { folder: 'folder', file: 'file', image: 'image' };
 const ROOT = 0;
-const PAGE_SIZE = 5;
+const PAGE_SIZE = 20;
 
 // Argument passed in must be a single String of 12 bytes or a string
 // of 24 hex characters
@@ -187,7 +187,8 @@ export default class FilesController {
 
     // this are search query
     const { parentId } = req.query;
-    const page = req.query.page || '' ? Number.parseInt(req.query.page.toString(), 10) : 0;
+    const page =
+      req.query.page || '' ? Number.parseInt(req.query.page.toString(), 10) : 0;
 
     console.log(user);
     console.log(page);
