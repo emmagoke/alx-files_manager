@@ -10,41 +10,46 @@ const PAGE_SIZE = 20;
 
 // Argument passed in must be a single String of 12 bytes or a string
 // of 24 hex characters
-// const NULL_ID = Buffer.alloc(24, '0').toString('utf-8');
-// const isValidId = (id) => {
-//   const size = 24;
-//   let i = 0;
-//   const charRanges = [
-//     [48, 57], // 0 - 9
-//     [97, 102], // a - f
-//     [65, 70], // A - F
-//   ];
-//   if (typeof id !== 'string' || id.length !== size) {
-//     return false;
-//   }
-//   while (i < size) {
-//     const c = id[i];
-//     const code = c.charCodeAt(0);
+const NULL_ID = Buffer.alloc(24, '0').toString('utf-8');
+const isValidId = (id) => {
+  const size = 24;
+  let i = 0;
+  const charRanges = [
+    [48, 57], // 0 - 9
+    [97, 102], // a - f
+    [65, 70], // A - F
+  ];
+  if (typeof id !== 'string' || id.length !== size) {
+    return false;
+  }
+  while (i < size) {
+    const c = id[i];
+    const code = c.charCodeAt(0);
 
-//     if (!charRanges.some((range) => code >= range[0] && code <= range[1])) {
-//       return false;
-//     }
-//     i += 1;
-//   }
-//   return true;
-// };
+    if (!charRanges.some((range) => code >= range[0] && code <= range[1])) {
+      return false;
+    }
+    i += 1;
+  }
+  return true;
+};
 
 export default class FilesController {
-  static async getUser(req) {
+  static async getUser(req, res) {
     const authToken = req.headers['x-token'];
 
     const value = await redisClient.get(`auth_${authToken}`);
 
     if (!value) {
+      res.status(401).json({ error: 'Unauthorized' });
+      res.end();
       return null;
     }
     const user = await dbClient.getUserById(value);
+
     if (!user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      res.end();
       return null;
     }
     return user;
@@ -52,11 +57,7 @@ export default class FilesController {
 
   static async postUpload(req, res) {
     const folderPath = process.env.FOLDER_PATH || '/tmp/files_manager';
-    const user = await FilesController.getUser(req);
-    if (!user) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
+    const user = await FilesController.getUser(req, res);
 
     const { name } = req.body;
     const { type } = req.body;
@@ -151,11 +152,7 @@ export default class FilesController {
 
   static async getShow(req, res) {
     const fileId = req.params.id;
-    const user = await FilesController.getUser(req);
-    if (!user) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
+    const user = await FilesController.getUser(req, res);
 
     const file = await dbClient.files.findOne({
       _id: new ObjectId(fileId.toString()),
@@ -179,11 +176,7 @@ export default class FilesController {
   }
 
   static async getIndex(req, res) {
-    const user = await FilesController.getUser(req);
-    if (!user) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
+    const user = await FilesController.getUser(req, res);
 
     // this are search query
     const { parentId } = req.query;
@@ -238,5 +231,65 @@ export default class FilesController {
     //   console.log(doc);
     // }
     res.status(200).json(file);
+  }
+
+  static async putPublish(req, res) {
+    const user = await FilesController.getUser(req, res);
+    const _id = req.params.id;
+
+    const search = {
+      _id: new ObjectId(isValidId(_id) ? _id : NULL_ID),
+      userId: user._id,
+    };
+    const insert = { $set: { isPublic: true } };
+    // const option = { returnOriginal: false };
+    // dbClient.files.findOneAndUpdate(search, insert, option, (err, result)=> {}
+
+    const file = await dbClient.files.findOne(search);
+    if (!file) {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
+
+    await dbClient.files.updateOne(search, insert);
+    const response = {
+      id: _id,
+      userId: user._id.toString(),
+      name: file.name,
+      type: file.type,
+      isPublic: true,
+      parentId: file.parentId.toString(),
+    };
+    res.status(200).json(response);
+  }
+
+  static async putUnpublish(req, res) {
+    const user = await FilesController.getUser(req, res);
+    const _id = req.params.id;
+
+    const search = {
+      _id: new ObjectId(isValidId(_id) ? _id : NULL_ID),
+      userId: user._id,
+    };
+    const insert = { $set: { isPublic: false } };
+    // const option = { returnOriginal: false };
+    // dbClient.files.findOneAndUpdate(search, insert, option, (err, result)=> {}
+
+    const file = await dbClient.files.findOne(search);
+    if (!file) {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
+
+    await dbClient.files.updateOne(search, insert);
+    const response = {
+      id: _id,
+      userId: user._id.toString(),
+      name: file.name,
+      type: file.type,
+      isPublic: false,
+      parentId: file.parentId.toString(),
+    };
+    res.status(200).json(response);
   }
 }
