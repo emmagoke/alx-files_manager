@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
 import { ObjectId } from 'mongodb';
+import mime from 'mime-types';
 import dbClient from '../utils/db';
 import redisClient from '../utils/redis';
 
@@ -50,6 +51,22 @@ export default class FilesController {
     if (!user) {
       res.status(401).json({ error: 'Unauthorized' });
       res.end();
+      return null;
+    }
+    return user;
+  }
+
+  static async getUserNew(req) {
+    const authToken = req.headers['x-token'];
+    const value = await redisClient.get(`auth_${authToken}`);
+
+    if (!value) {
+      return null;
+    }
+    const user = await dbClient.getUserById(value);
+
+    if (!user) {
+      console.log('Not user');
       return null;
     }
     return user;
@@ -291,5 +308,68 @@ export default class FilesController {
       parentId: file.parentId.toString(),
     };
     res.status(200).json(response);
+  }
+
+  static async getFile(req, res) {
+    // const user = await FilesController.getUser(req, res);
+    const _id = req.params.id;
+
+    const search = {
+      _id: new ObjectId(isValidId(_id) ? _id : NULL_ID),
+    };
+
+    const file = await dbClient.files.findOne(search);
+    if (!file) {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
+    if (file.type === ALLOWED.folder) {
+      res.status(400).json({ error: "A folder doesn't have content" });
+    }
+
+    if (file.isPublic) {
+      const { localPath } = file;
+      if (fs.existsSync(localPath)) {
+        fs.readFile(localPath, (err, data) => {
+          if (!err) {
+            const contentType = mime.contentType(file.name);
+            // res.setHeader(('Content-Type', contentType));
+            res.header('Content-Type', contentType);
+            res.status(200).send(data);
+          }
+        });
+      } else {
+        res.status(404).json({ error: 'Not found' });
+      }
+    } else {
+      // If the file is not Public i.e file.isPublic is false
+      // the user is the only allowed person to see the file
+      const user = await FilesController.getUserNew(req);
+
+      if (!user) {
+        console.log('Not User');
+        res.status(404).json({ error: 'Not found' });
+        return;
+      }
+      if (file.userId.toString() !== user._id.toString()) {
+        console.log('Not Owner');
+        res.status(404).json({ error: 'Not found' });
+        return;
+      }
+
+      const { localPath } = file;
+      if (fs.existsSync(localPath)) {
+        fs.readFile(localPath, (err, data) => {
+          if (!err) {
+            const contentType = mime.contentType(file.name);
+            // res.setHeader(('Content-Type', contentType));
+            res.header('Content-Type', contentType);
+            res.status(200).send(data);
+          }
+        });
+      } else {
+        res.status(404).json({ error: 'Not found' });
+      }
+    }
   }
 }
